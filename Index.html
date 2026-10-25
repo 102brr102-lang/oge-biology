@@ -31,12 +31,65 @@ Error generating stack: `+o.message+`
   <script>(function(){function m(a){var h=a.getAttribute("href");if(!h)return;try{var u=new URL(h,document.baseURI);if((u.protocol==="http:"||u.protocol==="https:")&&u.host!==location.host){a.target="_blank";a.rel="noopener noreferrer";}}catch(e){}}function s(){document.querySelectorAll("a[href]").forEach(m);}if(document.readyState!=="loading"){s();}else{document.addEventListener("DOMContentLoaded",s);}document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(a){m(a);}},true);})();</script>
   <script type="application/json" data-clippy-inline-media-manifest="1">{"version":1,"slots":[]}</script>
 
-<style>
-html{color-scheme:light only!important}:root{--bg:#f9fafb!important;--surface:#fff!important;--text:#111827!important;--muted:#374151!important;--border:#d1d5db!important}body{background:#f9fafb!important;color:#111827!important}
-input,textarea,select{background:#fff!important;color:#111827!important;-webkit-text-fill-color:#111827!important;opacity:1!important;font-weight:500!important;border:1.5px solid #d1d5db!important}
-div.relative.bg-white{color:#111827!important}div.relative.bg-white label{color:#111827!important;font-weight:600!important}
+<style id="fix-contrast">
+html{color-scheme:light only!important}body{background:#f9fafb!important;color:#111827!important}
+input,textarea,select{background:#fff!important;color:#111827!important;-webkit-text-fill-color:#111827!important;border:1.5px solid #d1d5db!important}
 </style>
-<style id="export-visible">#floating-export{position:fixed;bottom:20px;left:20px;z-index:9999;display:flex;gap:8px}#floating-export button{padding:12px 18px;border-radius:12px;font-weight:700;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.3);cursor:pointer;border:none}#fe-json{background:#22c55e;color:white}#fe-html{background:#8b5cf6;color:white}@media(max-width:1024px){#floating-export{bottom:80px;left:10px;right:10px;justify-content:center}}</style>
-<script id="floating-export-script">setTimeout(()=>{const bar=document.createElement('div');bar.id='floating-export';bar.innerHTML=`<button id="fe-json">📤 Экспорт JSON</button><button id="fe-html">⬇️ Скачать HTML</button>`;document.body.appendChild(bar);document.getElementById('fe-json').onclick=()=>{const btns=Array.from(document.querySelectorAll('button')).filter(b=>b.textContent.includes('Экспорт JSON'));if(btns[0])btns[0].click();};document.getElementById('fe-html').onclick=()=>{const btns=Array.from(document.querySelectorAll('button')).filter(b=>b.textContent.includes('HTML')&&b.textContent.includes('⬇'));if(btns[0])btns[0].click();};},1500);</script>
+<style id="github-only">
+#fe-github-btn{position:fixed;bottom:20px;right:20px;z-index:9999;padding:14px 20px;border-radius:12px;font-weight:700;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.25);cursor:pointer;border:none;background:#111827;color:white}
+#github-modal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px}
+#github-modal.open{display:flex}
+#github-modal .gm-box{background:white;border-radius:16px;padding:24px;max-width:460px;width:100%}
+#github-modal input{width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;margin:6px 0 12px 0;font-size:14px}
+#github-modal label{font-weight:600;font-size:13px;color:#111827}
+#github-modal .gm-actions{display:flex;gap:8px;margin-top:16px}
+#github-modal .gm-actions button{flex:1;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;border:none}
+#gm-push{background:#22c55e;color:white}#gm-save{background:#111827;color:white}#gm-cancel{background:#f3f4f6}
+#github-status{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:12px 20px;border-radius:12px;z-index:10001;display:none;font-size:13px}
+</style>
+<button id="fe-github-btn">💾 На GitHub</button>
+<div id="github-modal"><div class="gm-box">
+<h3 style="font-weight:800;font-size:18px;margin-bottom:4px">💾 Сохранение на GitHub</h3>
+<p style="font-size:12px;color:#6b7280;margin-bottom:16px">Токен хранится только в браузере.</p>
+<label>Владелец (owner)</label><input id="gh-owner" placeholder="102brr102-lang">
+<label>Репозиторий</label><input id="gh-repo" placeholder="oge-biology">
+<label>Ветка</label><input id="gh-branch" value="main">
+<label>Token (classic, repo)</label><input id="gh-token" type="password" placeholder="ghp_...">
+<div class="gm-actions"><button id="gm-cancel">Отмена</button><button id="gm-save">Сохранить</button><button id="gm-push">🚀 Отправить</button></div>
+<div id="gm-log" style="font-size:11px;color:#dc2626;margin-top:12px;white-space:pre-wrap"></div>
+</div></div><div id="github-status"></div>
+<script id="github-save-script">
+(function(){
+var LS='oge_github_settings';
+function showStatus(m,e){var el=document.getElementById('github-status');el.textContent=m;el.style.display='block';el.style.background=e?'#dc2626':'#111827';setTimeout(function(){el.style.display='none';},4000);}
+function load(){try{return JSON.parse(localStorage.getItem(LS)||'{}');}catch(e){return {};}}
+function save(s){localStorage.setItem(LS,JSON.stringify(s));}
+function openModal(){var s=load();document.getElementById('gh-owner').value=s.owner||'';document.getElementById('gh-repo').value=s.repo||'oge-biology';document.getElementById('gh-branch').value=s.branch||'main';document.getElementById('gh-token').value=s.token||'';document.getElementById('github-modal').classList.add('open');document.getElementById('gm-log').textContent='';}
+function closeModal(){document.getElementById('github-modal').classList.remove('open');}
+function getData(){for(var k of Object.keys(localStorage)){try{var v=JSON.parse(localStorage.getItem(k));if(Array.isArray(v)&&v.length>700&&v[0]&&v[0].id)return v;}catch(e){}}return window.__OGE_DATA__||[];}
+async function push(){
+var owner=document.getElementById('gh-owner').value.trim();var repo=document.getElementById('gh-repo').value.trim();var branch=document.getElementById('gh-branch').value.trim()||'main';var token=document.getElementById('gh-token').value.trim();var log=document.getElementById('gm-log');
+if(!owner||!repo||!token){log.textContent='Заполни owner, repo и token';return;}
+var cur=getData();log.textContent='Собираю '+cur.length+'...';
+try{
+var getUrl='https://api.github.com/repos/'+owner+'/'+repo+'/contents/index.html?ref='+branch;
+var getRes=await fetch(getUrl,{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}});
+var sha=null;if(getRes.ok){sha=(await getRes.json()).sha;}else if(getRes.status!==404){log.textContent='Ошибка получения: '+getRes.status;return;}
+var fullHtml=document.documentElement.outerHTML;var newDataStr=JSON.stringify(cur);
+var sc='<'+'/script>';
+var re1=new RegExp('window.__OGE_DATA__\\s*=\\s*\\[.*?\\];\\s*'+'<'+'/script>','s');
+fullHtml=fullHtml.replace(re1,'window.__OGE_DATA__ = '+newDataStr+';'+sc);
+if(fullHtml.indexOf(newDataStr.substring(0,30))===-1){
+fullHtml=fullHtml.replace('<script type="module"','<script>window.__OGE_DATA__ = '+newDataStr+';'+sc+'<script type="module"');
+}
+var finalHtml='<!DOCTYPE html>\n'+fullHtml;var content=btoa(unescape(encodeURIComponent(finalHtml)));
+log.textContent='Отправляю...';
+var putRes=await fetch('https://api.github.com/repos/'+owner+'/'+repo+'/contents/index.html',{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'auto: '+new Date().toISOString().slice(0,16),content:content,branch:branch,sha:sha||undefined})});
+if(putRes.ok){var rj=await putRes.json();log.textContent='✅ '+(rj.commit.sha||'').substring(0,7)+' - через 1-2 мин обновится';showStatus('✅ Сохранено!');save({owner:owner,repo:repo,branch:branch,token:token});setTimeout(closeModal,2000);}else{log.textContent='Ошибка: '+putRes.status+' '+(await putRes.text()).substring(0,800);showStatus('Ошибка',true);}
+}catch(e){log.textContent=e.message;showStatus(e.message,true);}
+}
+setTimeout(function(){document.getElementById('fe-github-btn').onclick=openModal;document.getElementById('gm-cancel').onclick=closeModal;document.getElementById('gm-save').onclick=function(){save({owner:document.getElementById('gh-owner').value.trim(),repo:document.getElementById('gh-repo').value.trim(),branch:document.getElementById('gh-branch').value.trim()||'main',token:document.getElementById('gh-token').value.trim()});showStatus('Сохранено');closeModal();};document.getElementById('gm-push').onclick=push;document.getElementById('github-modal').onclick=function(e){if(e.target.id==='github-modal')closeModal();};},1000);
+})();
+</script>
 </body>
 </html>
