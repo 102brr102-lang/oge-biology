@@ -58,33 +58,37 @@ input,textarea,select{background:#fff!important;color:#111827!important;-webkit-
 <div class="gm-actions"><button id="gm-cancel">Отмена</button><button id="gm-save">Сохранить</button><button id="gm-push">🚀 Отправить</button></div>
 <div id="gm-log" style="font-size:11px;color:#dc2626;margin-top:12px;white-space:pre-wrap"></div>
 </div></div><div id="github-status"></div>
-<script>
+<script id="github-save-script">
 (function(){
-const LS='oge_github_settings';
-function showStatus(m,e){const el=document.getElementById('github-status');el.textContent=m;el.style.display='block';el.style.background=e?'#dc2626':'#111827';setTimeout(()=>el.style.display='none',4000);}
-function load(){try{return JSON.parse(localStorage.getItem(LS)||'{}')}catch{return {}}}
+var LS='oge_github_settings';
+function showStatus(m,e){var el=document.getElementById('github-status');el.textContent=m;el.style.display='block';el.style.background=e?'#dc2626':'#111827';setTimeout(function(){el.style.display='none';},4000);}
+function load(){try{return JSON.parse(localStorage.getItem(LS)||'{}');}catch(e){return {};}}
 function save(s){localStorage.setItem(LS,JSON.stringify(s));}
-function openModal(){const s=load();document.getElementById('gh-owner').value=s.owner||'';document.getElementById('gh-repo').value=s.repo||'oge-biology';document.getElementById('gh-branch').value=s.branch||'main';document.getElementById('gh-token').value=s.token||'';document.getElementById('github-modal').classList.add('open');document.getElementById('gm-log').textContent='';}
+function openModal(){var s=load();document.getElementById('gh-owner').value=s.owner||'';document.getElementById('gh-repo').value=s.repo||'oge-biology';document.getElementById('gh-branch').value=s.branch||'main';document.getElementById('gh-token').value=s.token||'';document.getElementById('github-modal').classList.add('open');document.getElementById('gm-log').textContent='';}
 function closeModal(){document.getElementById('github-modal').classList.remove('open');}
-function getData(){for(let k of Object.keys(localStorage)){try{let v=JSON.parse(localStorage.getItem(k));if(Array.isArray(v)&&v.length>700&&v[0]&&v[0].id)return v;}catch{}}return window.__OGE_DATA__||[];}
+function getData(){for(var k of Object.keys(localStorage)){try{var v=JSON.parse(localStorage.getItem(k));if(Array.isArray(v)&&v.length>700&&v[0]&&v[0].id)return v;}catch(e){}}return window.__OGE_DATA__||[];}
 async function push(){
-const owner=document.getElementById('gh-owner').value.trim();const repo=document.getElementById('gh-repo').value.trim();const branch=document.getElementById('gh-branch').value.trim()||'main';const token=document.getElementById('gh-token').value.trim();const log=document.getElementById('gm-log');
+var owner=document.getElementById('gh-owner').value.trim();var repo=document.getElementById('gh-repo').value.trim();var branch=document.getElementById('gh-branch').value.trim()||'main';var token=document.getElementById('gh-token').value.trim();var log=document.getElementById('gm-log');
 if(!owner||!repo||!token){log.textContent='Заполни owner, repo и token';return;}
-const cur=getData();log.textContent='Собираю '+cur.length+'...';
+var cur=getData();log.textContent='Собираю '+cur.length+'...';
 try{
-const getUrl=`https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`;
-const getRes=await fetch(getUrl,{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}});
-let sha=null;if(getRes.ok){sha=(await getRes.json()).sha;}else if(getRes.status!==404){log.textContent='Ошибка получения: '+getRes.status;return;}
-let fullHtml=document.documentElement.outerHTML;const newDataStr=JSON.stringify(cur);
-fullHtml=fullHtml.replace(/window\.__OGE_DATA__\s*=\s*\[.*?\];\s*<\/script>/s,'window.__OGE_DATA__ = '+newDataStr+';</script>');
-if(!fullHtml.includes(newDataStr.substring(0,30))){fullHtml=fullHtml.replace('<script type="module"','<script>window.__OGE_DATA__ = '+newDataStr+';</script><script type="module"');}
-const finalHtml='<!DOCTYPE html>\n'+fullHtml;const content=btoa(unescape(encodeURIComponent(finalHtml)));
+var getUrl='https://api.github.com/repos/'+owner+'/'+repo+'/contents/index.html?ref='+branch;
+var getRes=await fetch(getUrl,{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}});
+var sha=null;if(getRes.ok){sha=(await getRes.json()).sha;}else if(getRes.status!==404){log.textContent='Ошибка получения: '+getRes.status;return;}
+var fullHtml=document.documentElement.outerHTML;var newDataStr=JSON.stringify(cur);
+var sc='<'+'/script>';
+var re1=new RegExp('window.__OGE_DATA__\\s*=\\s*\\[.*?\\];\\s*'+'<'+'/script>','s');
+fullHtml=fullHtml.replace(re1,'window.__OGE_DATA__ = '+newDataStr+';'+sc);
+if(fullHtml.indexOf(newDataStr.substring(0,30))===-1){
+fullHtml=fullHtml.replace('<script type="module"','<script>window.__OGE_DATA__ = '+newDataStr+';'+sc+'<script type="module"');
+}
+var finalHtml='<!DOCTYPE html>\n'+fullHtml;var content=btoa(unescape(encodeURIComponent(finalHtml)));
 log.textContent='Отправляю...';
-const putRes=await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`,{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'auto: '+new Date().toISOString().slice(0,16),content:content,branch:branch,sha:sha||undefined})});
-if(putRes.ok){const rj=await putRes.json();log.textContent='✅ '+rj.commit.sha.substring(0,7)+' - через 1-2 мин обновится';showStatus('✅ Сохранено!');save({owner,repo,branch,token});setTimeout(closeModal,2000);}else{log.textContent='Ошибка: '+putRes.status+' '+(await putRes.text()).substring(0,800);showStatus('Ошибка',true);}
+var putRes=await fetch('https://api.github.com/repos/'+owner+'/'+repo+'/contents/index.html',{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({message:'auto: '+new Date().toISOString().slice(0,16),content:content,branch:branch,sha:sha||undefined})});
+if(putRes.ok){var rj=await putRes.json();log.textContent='✅ '+(rj.commit.sha||'').substring(0,7)+' - через 1-2 мин обновится';showStatus('✅ Сохранено!');save({owner:owner,repo:repo,branch:branch,token:token});setTimeout(closeModal,2000);}else{log.textContent='Ошибка: '+putRes.status+' '+(await putRes.text()).substring(0,800);showStatus('Ошибка',true);}
 }catch(e){log.textContent=e.message;showStatus(e.message,true);}
 }
-setTimeout(()=>{document.getElementById('fe-github-btn').onclick=openModal;document.getElementById('gm-cancel').onclick=closeModal;document.getElementById('gm-save').onclick=()=>{save({owner:document.getElementById('gh-owner').value.trim(),repo:document.getElementById('gh-repo').value.trim(),branch:document.getElementById('gh-branch').value.trim()||'main',token:document.getElementById('gh-token').value.trim()});showStatus('Сохранено');closeModal();};document.getElementById('gm-push').onclick=push;document.getElementById('github-modal').onclick=(e)=>{if(e.target.id==='github-modal')closeModal();};},1000);
+setTimeout(function(){document.getElementById('fe-github-btn').onclick=openModal;document.getElementById('gm-cancel').onclick=closeModal;document.getElementById('gm-save').onclick=function(){save({owner:document.getElementById('gh-owner').value.trim(),repo:document.getElementById('gh-repo').value.trim(),branch:document.getElementById('gh-branch').value.trim()||'main',token:document.getElementById('gh-token').value.trim()});showStatus('Сохранено');closeModal();};document.getElementById('gm-push').onclick=push;document.getElementById('github-modal').onclick=function(e){if(e.target.id==='github-modal')closeModal();};},1000);
 })();
 </script>
 </body>
