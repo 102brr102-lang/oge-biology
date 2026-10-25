@@ -31,12 +31,198 @@ Error generating stack: `+o.message+`
   <script>(function(){function m(a){var h=a.getAttribute("href");if(!h)return;try{var u=new URL(h,document.baseURI);if((u.protocol==="http:"||u.protocol==="https:")&&u.host!==location.host){a.target="_blank";a.rel="noopener noreferrer";}}catch(e){}}function s(){document.querySelectorAll("a[href]").forEach(m);}if(document.readyState!=="loading"){s();}else{document.addEventListener("DOMContentLoaded",s);}document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(a){m(a);}},true);})();</script>
   <script type="application/json" data-clippy-inline-media-manifest="1">{"version":1,"slots":[]}</script>
 
-<style>
-html{color-scheme:light only!important}:root{--bg:#f9fafb!important;--surface:#fff!important;--text:#111827!important;--muted:#374151!important;--border:#d1d5db!important}body{background:#f9fafb!important;color:#111827!important}
-input,textarea,select{background:#fff!important;color:#111827!important;-webkit-text-fill-color:#111827!important;opacity:1!important;font-weight:500!important;border:1.5px solid #d1d5db!important}
-div.relative.bg-white{color:#111827!important}div.relative.bg-white label{color:#111827!important;font-weight:600!important}
+<style id="github-save-style">
+#floating-export{position:fixed;bottom:20px;left:20px;z-index:9999;display:flex;gap:8px;flex-wrap:wrap}
+#floating-export button{padding:12px 18px;border-radius:12px;font-weight:700;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.3);cursor:pointer;border:none}
+#fe-json{background:#22c55e;color:white}#fe-html{background:#8b5cf6;color:white}#fe-github{background:#111827;color:white;border:2px solid #22c55e!important}
+#github-modal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px}
+#github-modal.open{display:flex}
+#github-modal .gm-box{background:white;border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+#github-modal input{width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;margin:6px 0 12px 0;font-size:14px}
+#github-modal label{font-weight:600;font-size:13px;color:#111827}
+#github-modal .gm-actions{display:flex;gap:8px;margin-top:16px}
+#github-modal .gm-actions button{flex:1;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;border:none}
+#gm-save{background:#111827;color:white}
+#gm-push{background:#22c55e;color:white}
+#gm-cancel{background:#f3f4f6;color:#111827}
+#github-status{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:white;padding:12px 20px;border-radius:12px;z-index:10001;display:none;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.3)}
 </style>
-<style id="export-visible">#floating-export{position:fixed;bottom:20px;left:20px;z-index:9999;display:flex;gap:8px}#floating-export button{padding:12px 18px;border-radius:12px;font-weight:700;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.3);cursor:pointer;border:none}#fe-json{background:#22c55e;color:white}#fe-html{background:#8b5cf6;color:white}@media(max-width:1024px){#floating-export{bottom:80px;left:10px;right:10px;justify-content:center}}</style>
-<script id="floating-export-script">setTimeout(()=>{const bar=document.createElement('div');bar.id='floating-export';bar.innerHTML=`<button id="fe-json">📤 Экспорт JSON</button><button id="fe-html">⬇️ Скачать HTML</button>`;document.body.appendChild(bar);document.getElementById('fe-json').onclick=()=>{const btns=Array.from(document.querySelectorAll('button')).filter(b=>b.textContent.includes('Экспорт JSON'));if(btns[0])btns[0].click();};document.getElementById('fe-html').onclick=()=>{const btns=Array.from(document.querySelectorAll('button')).filter(b=>b.textContent.includes('HTML')&&b.textContent.includes('⬇'));if(btns[0])btns[0].click();};},1500);</script>
+<div id="github-modal">
+  <div class="gm-box">
+    <h3 style="font-weight:800;font-size:18px;margin-bottom:4px">💾 Сохранение на GitHub</h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:16px">Токен хранится только в твоем браузере (localStorage), на сервер не уходит.</p>
+    <label>Владелец (owner)</label><input id="gh-owner" placeholder="например, 102brr102">
+    <label>Репозиторий (repo)</label><input id="gh-repo" placeholder="oge-biology">
+    <label>Ветка</label><input id="gh-branch" value="main">
+    <label>GitHub Personal Access Token (classic, с правом repo)</label><input id="gh-token" type="password" placeholder="ghp_...">
+    <p style="font-size:11px;color:#6b7280;margin-top:8px">Как получить токен: GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → галочка repo → Generate</p>
+    <div class="gm-actions">
+      <button id="gm-cancel">Отмена</button>
+      <button id="gm-save">Сохранить настройки</button>
+      <button id="gm-push">🚀 Отправить на GitHub</button>
+    </div>
+    <div id="gm-log" style="font-size:11px;color:#dc2626;margin-top:12px;white-space:pre-wrap"></div>
+  </div>
+</div>
+<div id="github-status"></div>
+<script id="github-save-script">
+(function(){
+  const LS_KEY='oge_github_settings';
+  function showStatus(msg, isError){
+    const el=document.getElementById('github-status');
+    el.textContent=msg;
+    el.style.display='block';
+    el.style.background=isError?'#dc2626':'#111827';
+    setTimeout(()=>el.style.display='none', 4000);
+  }
+  function loadSettings(){
+    try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}')}catch{return {}}
+  }
+  function saveSettings(s){
+    localStorage.setItem(LS_KEY, JSON.stringify(s));
+  }
+  function openModal(){
+    const s=loadSettings();
+    document.getElementById('gh-owner').value=s.owner||'';
+    document.getElementById('gh-repo').value=s.repo||'oge-biology';
+    document.getElementById('gh-branch').value=s.branch||'main';
+    document.getElementById('gh-token').value=s.token||'';
+    document.getElementById('github-modal').classList.add('open');
+    document.getElementById('gm-log').textContent='';
+  }
+  function closeModal(){
+    document.getElementById('github-modal').classList.remove('open');
+  }
+  // Try to get current edited data from React app
+  function getCurrentData(){
+    // 1. Try to find React state via window
+    // The app stores questions in state 'n' - we can try to read from localStorage where it might persist, or from window.__OGE_DATA__ plus edits
+    // Best effort: try to get from localStorage key used by app
+    for(let k of Object.keys(localStorage)){
+      try{
+        let v=JSON.parse(localStorage.getItem(k));
+        if(Array.isArray(v) && v.length>700 && v[0] && v[0].id){
+          return v;
+        }
+      }catch{}
+    }
+    // Fallback to global
+    return window.__OGE_DATA__ || [];
+  }
+  function buildNewHtml(newData){
+    // Take current document HTML and replace __OGE_DATA__ block
+    let html = document.documentElement.outerHTML;
+    // But we need clean base - we will rebuild from current page's source by replacing the data injection
+    // Simpler: fetch current index.html source and replace
+    // We'll construct new html by taking original template from window and injecting new data
+    // For now, build minimal: replace window.__OGE_DATA__ assignment
+    const jsonStr = JSON.stringify(newData);
+    // Find and replace in current html string
+    let newHtml = document.documentElement.outerHTML;
+    // Replace window.__OGE_DATA__ = [...]
+    newHtml = newHtml.replace(/window\.__OGE_DATA__\s*=\s*\[.*?\];/s, 'window.__OGE_DATA__ = '+jsonStr+';');
+    // Actually outerHTML doesn't contain our injection script? It does
+    // Ensure doctype
+    return '<!DOCTYPE html>\n' + newHtml;
+  }
+  async function pushToGitHub(){
+    const owner=document.getElementById('gh-owner').value.trim();
+    const repo=document.getElementById('gh-repo').value.trim();
+    const branch=document.getElementById('gh-branch').value.trim()||'main';
+    const token=document.getElementById('gh-token').value.trim();
+    const log=document.getElementById('gm-log');
+    if(!owner||!repo||!token){log.textContent='Заполни owner, repo и token';return;}
+    log.textContent='Получаю текущие данные...';
+    const currentData=getCurrentData();
+    if(!currentData||currentData.length<100){log.textContent='Не удалось получить данные вопросов';return;}
+    // Build new html file content by fetching current page source and injecting
+    log.textContent='Собираю новый index.html ('+currentData.length+' вопросов)...';
+    // We will rebuild index.html on client: take current document's HTML, but replace the data
+    // To avoid issues with outerHTML, we will construct new file by replacing in the original fetched file
+    try{
+      // Get current index.html SHA first
+      const getUrl=`https://api.github.com/repos/${owner}/${repo}/contents/index.html?ref=${branch}`;
+      const getRes=await fetch(getUrl,{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}});
+      let sha=null;
+      if(getRes.ok){
+        const j=await getRes.json();
+        sha=j.sha;
+      }else if(getRes.status!==404){
+        const t=await getRes.text();
+        log.textContent='Ошибка получения файла: '+getRes.status+' '+t.substring(0,300);
+        return;
+      }
+      // Build new file content: we need full html with new data
+      // Re-use current document's full HTML but ensure injection
+      let fullHtml=document.documentElement.outerHTML;
+      // The current page's outerHTML already has old data, replace it
+      const newDataStr=JSON.stringify(currentData);
+      fullHtml=fullHtml.replace(/window\.__OGE_DATA__\s*=\s*\[.*?\];\s*<\/script>/s, 'window.__OGE_DATA__ = '+newDataStr+';</script>');
+      // If replacement failed, inject before first module script
+      if(!fullHtml.includes(newDataStr.substring(0,50))){
+        fullHtml=fullHtml.replace('<script type="module"', '<script>window.__OGE_DATA__ = '+newDataStr+';</script><script type="module"');
+      }
+      const finalHtml='<!DOCTYPE html>\n'+fullHtml;
+      const content=btoa(unescape(encodeURIComponent(finalHtml)));
+      log.textContent='Отправляю на GitHub...';
+      const putUrl=`https://api.github.com/repos/${owner}/${repo}/contents/index.html`;
+      const putRes=await fetch(putUrl,{
+        method:'PUT',
+        headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+        body:JSON.stringify({message:'auto: обновление базы '+new Date().toISOString().slice(0,16), content:content, branch:branch, sha:sha||undefined})
+      });
+      if(putRes.ok){
+        const rj=await putRes.json();
+        log.textContent='✅ Успешно! Коммит: '+rj.commit.sha.substring(0,7)+'\nПодожди 1-2 минуты и обнови сайт.';
+        showStatus('✅ Сохранено на GitHub!');
+        saveSettings({owner,repo,branch,token});
+        setTimeout(closeModal, 2000);
+      }else{
+        const t=await putRes.text();
+        log.textContent='Ошибка сохранения: '+putRes.status+'\n'+t.substring(0,1000);
+        showStatus('Ошибка сохранения', true);
+      }
+    }catch(e){
+      log.textContent='Исключение: '+e.message;
+      showStatus('Ошибка: '+e.message, true);
+    }
+  }
+  setTimeout(()=>{
+    // Create floating buttons
+    const bar=document.createElement('div');
+    bar.id='floating-export';
+    bar.innerHTML=`<button id="fe-json">📤 JSON</button><button id="fe-html">⬇️ HTML</button><button id="fe-github">💾 На GitHub</button>`;
+    document.body.appendChild(bar);
+    document.getElementById('fe-json').onclick=()=>{const btns=Array.from(document.querySelectorAll('button')).filter(b=>b.textContent.includes('Экспорт JSON'));if(btns[0])btns[0].click();};
+    document.getElementById('fe-html').onclick=()=>{const btns=Array.from(document.querySelectorAll('button')).filter(b=>b.textContent.includes('⬇️ HTML'));if(btns[0])btns[0].click();};
+    document.getElementById('fe-github').onclick=openModal;
+    document.getElementById('gm-cancel').onclick=closeModal;
+    document.getElementById('gm-save').onclick=()=>{
+      const owner=document.getElementById('gh-owner').value.trim();
+      const repo=document.getElementById('gh-repo').value.trim();
+      const branch=document.getElementById('gh-branch').value.trim()||'main';
+      const token=document.getElementById('gh-token').value.trim();
+      saveSettings({owner,repo,branch,token});
+      showStatus('Настройки сохранены');
+      closeModal();
+    };
+    document.getElementById('gm-push').onclick=pushToGitHub;
+    document.getElementById('github-modal').onclick=(e)=>{if(e.target.id==='github-modal')closeModal();};
+    // Auto-fill from URL if possible
+    const s=loadSettings();
+    if(!s.owner){
+      const host=window.location.hostname;
+      if(host.includes('github.io')){
+        const parts=host.split('.');
+        // user.github.io -> owner is user
+        const ownerGuess=host.split('.')[0];
+        if(ownerGuess) {
+          document.getElementById('gh-owner').value=ownerGuess;
+        }
+      }
+    }
+  }, 1200);
+})();
+</script>
 </body>
 </html>
